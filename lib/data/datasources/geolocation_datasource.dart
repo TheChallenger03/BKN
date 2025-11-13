@@ -5,7 +5,7 @@ abstract class GeolocationDataSource {
   Future<LatLng> getCurrentPosition();
   Future<bool> checkLocationPermission();
   Stream<LatLng> getPositionStream();
-}
+} 
 
 class GeolocationDataSourceImpl implements GeolocationDataSource {
   @override
