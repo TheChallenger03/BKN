@@ -7,6 +7,7 @@ class LocationListItem extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onTogglePin;
+  final VoidCallback onShare;
 
   const LocationListItem({
     super.key,
@@ -15,6 +16,7 @@ class LocationListItem extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onTogglePin,
+    required this.onShare,
   });
 
   @override
@@ -22,7 +24,7 @@ class LocationListItem extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: location.isPinned ? 2 : 1,
-      color: location.isPinned 
+      color: location.isPinned
           ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
           : null,
       child: ListTile(
@@ -62,6 +64,11 @@ class LocationListItem extends StatelessWidget {
               ),
               tooltip: location.isPinned ? 'Rimuovi pin' : 'Fissa in alto',
               onPressed: onTogglePin,
+            ),
+            IconButton(
+              icon: const Icon(Icons.share),
+              tooltip: 'Condividi',
+              onPressed: onShare,
             ),
             IconButton(
               icon: const Icon(Icons.edit),

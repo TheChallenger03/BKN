@@ -34,9 +34,6 @@ class RoutingDataSourceImpl implements RoutingDataSource {
       ],
     });
 
-    print('Requesting route from: ${from.latitude},${from.longitude} to: ${to.latitude},${to.longitude}');
-    print('URL: $url');
-
     final response = await client.post(
       url,
       headers: {
@@ -46,17 +43,11 @@ class RoutingDataSourceImpl implements RoutingDataSource {
       body: body,
     );
 
-    print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');
-
     if(response.statusCode != 200) {
       throw Exception('Failed to fetch route: ${response.statusCode} - ${response.body}');
     }
 
     final data = jsonDecode(response.body);
-
-    // Debug: print response to see what we're getting
-    print('OpenRouteService Response: $data');
 
     // OpenRouteService returns 'routes' not 'features'
     if(data['routes'] == null || (data['routes'] as List).isEmpty) {

@@ -62,8 +62,6 @@ class GeolocationDataSourceImpl implements GeolocationDataSource {
     return Geolocator.getPositionStream(locationSettings: locationSettings)
       .map((Position position) => LatLng(position.latitude, position.longitude))
       .handleError((error) {
-        print('Position stream error: $error');
-        // Return last known position on error
         return Geolocator.getLastKnownPosition().then((pos) {
           if (pos != null) {
             return LatLng(pos.latitude, pos.longitude);

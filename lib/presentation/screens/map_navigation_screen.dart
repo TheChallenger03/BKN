@@ -13,9 +13,10 @@ class MapNavigationScreen extends ConsumerStatefulWidget {
     super.key,
     required this.destination,
   });
-  
+
   @override
-  ConsumerState<MapNavigationScreen> createState() => _MapNavigationScreenState();
+  ConsumerState<MapNavigationScreen> createState() =>
+      _MapNavigationScreenState();
 }
 
 class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
@@ -52,7 +53,7 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
       widget.destination.longitude,
     );
 
-    //Center map on current position or destination
+    // Center map on current position or destination
     final center = mapState.currentPosition ?? destinationLatLng;
 
     return FlutterMap(
