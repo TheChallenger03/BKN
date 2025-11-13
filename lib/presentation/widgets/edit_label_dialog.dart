@@ -5,9 +5,9 @@ class EditLabelDialog extends StatefulWidget {
   final String currentLabel;
 
   const EditLabelDialog({
-      super.key, 
-      required this.currentLabel
-    });
+    super.key,
+    required this.currentLabel,
+  });
 
   @override
   State<EditLabelDialog> createState() => _EditLabelDialogState();

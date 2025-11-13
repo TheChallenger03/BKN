@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../domain/entities/saved_location.dart';
 import '../providers/map_provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/link_utils.dart';
+import '../../core/themes/app_theme.dart';
 
 class MapNavigationScreen extends ConsumerStatefulWidget {
   final SavedLocation destination;
@@ -35,6 +38,13 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.destination.label),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Condividi posizione',
+            onPressed: _shareLocation,
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -76,7 +86,7 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
               Polyline(
                 points: mapState.currentRoute!.coordinates,
                 strokeWidth: 4,
-                color: Colors.blue,
+                color: AppTheme.primaryTeal,
               ),
             ],
           ),
@@ -102,9 +112,16 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
                 height: 30,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.blue,
+                    gradient: AppTheme.primaryGradient,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryTeal.withValues(alpha: 0.5),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -116,62 +133,81 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
 
   Widget _buildLoadingOverlay() {
     return Container(
-      color: Colors.black26,
-      child: const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Calcolo percorso...'),
-              ],
-            ),
+      color: Colors.black.withValues(alpha: 0.5),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24.0),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRouteInfo(mapState) {
-    final route = mapState.currentRoute!;
-
-    return Positioned(
-      top: 16,
-      left: 16,
-      right: 16,
-      child: Card(
-        elevation: 4,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.directions_walk, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    route.formattedDistance,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Icon(Icons.access_time, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    route.formattedDuration,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryTeal),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Calcolo percorso...',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }  Widget _buildRouteInfo(mapState) {
+    final route = mapState.currentRoute!;
+
+    return Positioned(
+      bottom: 16,
+      left: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildRouteInfoItem(
+            Icons.directions_walk,
+            route.formattedDistance,
+          ),
+          const SizedBox(height: 12),
+          _buildRouteInfoItem(
+            Icons.access_time,
+            route.formattedDuration,
+          ),
+        ],
+      ),
+    );
+  }  Widget _buildRouteInfoItem(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: AppTheme.primaryTeal),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.95),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -179,26 +215,41 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
   Widget _buildErrorBanner(mapState) {
     return Positioned(
       bottom: 16,
-      left: 16,
       right: 16,
-      child: Card(
-        color: Colors.red[100],
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              const Icon(Icons.error, color: Colors.red),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  mapState.errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 250),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.red.withValues(alpha: 0.5),
+            width: 1,
           ),
         ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error, color: Colors.red, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                mapState.errorMessage!,
+                style: TextStyle(
+                  color: Colors.red.shade300,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }  Future<void> _shareLocation() async {
+    final message = LinkUtils.generateShareMessage(widget.destination);
+    await Share.share(
+      message,
+      subject: 'Posizione: ${widget.destination.label}',
     );
   }
 }

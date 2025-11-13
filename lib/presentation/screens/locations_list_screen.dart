@@ -8,6 +8,8 @@ import '../widgets/save_location_dialog.dart';
 import '../widgets/edit_label_dialog.dart';
 import '../widgets/delete_confirmation_dialog.dart';
 import '../widgets/import_location_dialog.dart';
+import '../widgets/glowing_fab.dart';
+import '../../core/themes/app_theme.dart';
 import '../../core/utils/link_utils.dart';
 import 'map_navigation_screen.dart';
 
@@ -46,16 +48,7 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
       final location = locationData.toSavedLocation();
       
       // Save the location
-      final success = await notifier.saveLocation(location.label);
-
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Posizione "${location.label}" salvata!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      await notifier.saveLocation(location.label);
     }
 
     // Clear the pending link
@@ -75,7 +68,7 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Le Mie Posizioni'),
+        title: const Text('BKN'),
         centerTitle: true,
       ),
       body: locationsAsync.when(
@@ -144,10 +137,9 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: GlowingFab(
         onPressed: () => _saveNewLocation(context, ref),
-        icon: const Icon(Icons.add_location),
-        label: const Text('Salva Posizione'),
+        icon: Icons.add_location,
       ),
     );
   }
@@ -157,23 +149,43 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.location_off,
-            size: 100,
-            color: Colors.grey[400],
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.primaryTeal.withValues(alpha: 0.1),
+                  AppTheme.secondaryTeal.withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+            child: Icon(
+              Icons.location_off,
+              size: 80,
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Text(
             'Nessuna posizione salvata',
-            style: Theme.of(context).textTheme.headlineSmall,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             'Tocca il pulsante in basso per salvare\nla tua posizione attuale',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withValues(alpha: 0.6),
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -188,20 +200,7 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
 
     if (label != null && context.mounted) {
       final notifier = ref.read(locationsProvider.notifier);
-      final success = await notifier.saveLocation(label);
-
-      if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Posizione salvata!')),
-        );
-      } else if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Errore nel salvare la posizione'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      await notifier.saveLocation(label);
     }
   }
 
@@ -217,13 +216,7 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
 
     if (newLabel != null && newLabel != location.label && context.mounted) {
       final notifier = ref.read(locationsProvider.notifier);
-      final success = await notifier.updateLabel(location.id!, newLabel);
-
-      if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Etichetta modificata!')),
-        );
-      }
+      await notifier.updateLabel(location.id!, newLabel);
     }
   }
 
@@ -241,13 +234,7 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
 
     if (confirm == true && context.mounted) {
       final notifier = ref.read(locationsProvider.notifier);
-      final success = await notifier.removeLocation(location.id!);
-
-      if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Posizione eliminata')),
-        );
-      }
+      await notifier.removeLocation(location.id!);
     }
   }
 
@@ -256,19 +243,19 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
     await notifier.togglePin(id);
   }
 
-  void _shareLocation(location) {
-    final link = LinkUtils.generateLocationLink(location);
-    Share.share(
-      'Condividi questa posizione: $link',
-      subject: 'Posizione: ${location.label}',
-    );
-  }
-
   void _navigateToMap(BuildContext context, location) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => MapNavigationScreen(destination: location),
       ),
+    );
+  }
+
+  Future<void> _shareLocation(location) async {
+    final message = LinkUtils.generateShareMessage(location);
+    await Share.share(
+      message,
+      subject: 'Posizione: ${location.label}',
     );
   }
 }

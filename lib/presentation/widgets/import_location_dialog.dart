@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/link_utils.dart';
-
 class ImportLocationDialog extends StatelessWidget {
   final LocationLinkData locationData;
-  
+
   const ImportLocationDialog({
     super.key,
     required this.locationData,
