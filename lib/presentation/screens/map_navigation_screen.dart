@@ -162,6 +162,15 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
         TileLayer(
           urlTemplate: AppConstants.osmTileUrl,
           userAgentPackageName: 'com.example.location_tracker',
+          maxNativeZoom: 19,
+          maxZoom: 19,
+          // Retry failed tile downloads
+          tileProvider: NetworkTileProvider(),
+          // Don't log tile loading errors to console
+          errorTileCallback: (tile, error, stackTrace) {
+            // Silently ignore tile loading errors
+            // These are usually temporary network issues
+          },
         ),
         // Route polyline (only draw if route has more than one point)
         if (routePoints > 1)

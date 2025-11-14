@@ -105,9 +105,10 @@ class MapNotifier extends StateNotifier<MapState> {
             );
           },
           (route) {
-            // Success - cancel timer and update state
+            // Success - cancel timer and update state with both route and position
             _initialRouteTimer?.cancel();
             state = state.copyWith(
+              currentPosition: lastPosition,
               currentRoute: route,
               isLoading: false,
               lastRecalculation: DateTime.now(),
