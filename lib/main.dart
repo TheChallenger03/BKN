@@ -50,9 +50,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkPermissions() async {
-    // Wait a bit to show splash screen
-    await Future.delayed(const Duration(seconds: 1));
-
     if (!mounted) return;
 
     final status = await PermissionHandler.checkLocationPermission();
@@ -93,8 +90,8 @@ class _SplashScreenState extends State<SplashScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 120,
-                height: 120,
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
@@ -108,8 +105,8 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: ClipOval(
                   child: Image.asset(
                     'assets/icon/bkn.png',
-                    width: 120,
-                    height: 120,
+                    width: 80,
+                    height: 80,
                     fit: BoxFit.cover,
                   ),
                 ),

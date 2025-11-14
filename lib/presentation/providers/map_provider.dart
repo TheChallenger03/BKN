@@ -49,6 +49,8 @@ class MapNotifier extends StateNotifier<MapState> {
   Timer? _initialRouteTimer;
   int _routeRetryCount = 0;
   static const int _maxRouteRetries = 3;
+  bool _hasCalculatedInitialRoute = false;
+  bool _isCalculatingRoute = false;
 
   MapNotifier({
     required this.getRoute,
@@ -141,14 +143,55 @@ class MapNotifier extends StateNotifier<MapState> {
     final oldPosition = state.currentPosition;
     state = state.copyWith(currentPosition: position);
 
+    // Trim route based on current position
+    if (state.currentRoute != null) {
+      _trimRouteToPosition(position);
+    }
+
     // Calculate route if its the first position or enough time has passed
-    if(state.currentRoute == null) {
+    if(state.currentRoute == null && !_hasCalculatedInitialRoute) {
       // Cancel timer since we got a real position
       _initialRouteTimer?.cancel();
+      _hasCalculatedInitialRoute = true;
       await _calculateRoute(position);
     }
     else if(oldPosition != null && _shouldRecalculateRoute(position)) {
       await _calculateRoute(position);
+    }
+  }
+
+  void _trimRouteToPosition(LatLng currentPosition) {
+    final route = state.currentRoute!;
+    if (route.coordinates.length <= 2) return;
+
+    final distance = Distance();
+    int closestIndex = 0;
+    double minDistance = double.infinity;
+
+    // Find closest point on route
+    for (int i = 0; i < route.coordinates.length; i++) {
+      final dist = distance.as(
+        LengthUnit.Meter,
+        currentPosition,
+        route.coordinates[i],
+      );
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIndex = i;
+      }
+    }
+
+    // Only trim if we're close enough to a point (within 15 meters) and not at the start
+    if (minDistance < 15.0 && closestIndex > 0) {
+      final trimmedCoordinates = route.coordinates.sublist(closestIndex);
+      if (trimmedCoordinates.length >= 2) {
+        final trimmedRoute = RouteInfo(
+          coordinates: trimmedCoordinates,
+          distance: route.distance,
+          duration: route.duration,
+        );
+        state = state.copyWith(currentRoute: trimmedRoute);
+      }
     }
   }
 
@@ -179,10 +222,11 @@ class MapNotifier extends StateNotifier<MapState> {
   }
 
   Future<void> _calculateRoute(LatLng from) async {
-    if(state.isLoading) {
+    if(state.isLoading || _isCalculatingRoute) {
       return;
     }
 
+    _isCalculatingRoute = true;
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     final destinationLatLng = LatLng(
@@ -197,6 +241,7 @@ class MapNotifier extends StateNotifier<MapState> {
 
     result.fold(
       (failure) {
+        _isCalculatingRoute = false;
         state = state.copyWith(
           isLoading: false,
           errorMessage: failure.message,
@@ -249,6 +294,7 @@ class MapNotifier extends StateNotifier<MapState> {
         );
       },
     );
+    _isCalculatingRoute = false;
   }
 
   @override
