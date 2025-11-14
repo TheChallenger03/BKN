@@ -23,7 +23,20 @@ class MapNavigationScreen extends ConsumerStatefulWidget {
 }
 
 class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
-  final MapController _mapController = MapController();
+  late final MapController _mapController;
+  late final String _mapKey;
+  late final StateNotifierProvider<MapNotifier, MapState> _mapProvider;
+  bool _hasFittedBounds = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Create unique key and controller for this instance
+    _mapKey = '${widget.destination.id ?? 'new'}_${widget.destination.latitude}_${widget.destination.longitude}_${DateTime.now().millisecondsSinceEpoch}';
+    _mapController = MapController();
+    // Create a fresh provider instance for this navigation
+    _mapProvider = createMapProvider(widget.destination);
+  }
 
   @override
   void dispose() {
@@ -33,7 +46,17 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mapState = ref.watch(mapProvider(widget.destination));
+    final mapState = ref.watch(_mapProvider);
+
+    // Fit bounds once when route is available
+    if (mapState.currentRoute != null && !_hasFittedBounds && mounted) {
+      _hasFittedBounds = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _fitMapBounds(mapState);
+        }
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -57,6 +80,59 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
     );
   }
 
+  void _fitMapBounds(mapState) {
+    if (mapState.currentRoute == null) return;
+
+    final route = mapState.currentRoute!;
+    final destinationLatLng = LatLng(
+      widget.destination.latitude,
+      widget.destination.longitude,
+    );
+
+    // Get all points including current position, route, and destination
+    final allPoints = [
+      ...route.coordinates,
+      destinationLatLng,
+      if (mapState.currentPosition != null) mapState.currentPosition!,
+    ];
+
+    if (allPoints.isEmpty) return;
+
+    // Calculate bounds
+    double minLat = allPoints.first.latitude;
+    double maxLat = allPoints.first.latitude;
+    double minLng = allPoints.first.longitude;
+    double maxLng = allPoints.first.longitude;
+
+    for (final point in allPoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    // Add padding to bounds
+    final latPadding = (maxLat - minLat) * 0.2;
+    final lngPadding = (maxLng - minLng) * 0.2;
+
+    final bounds = LatLngBounds(
+      LatLng(minLat - latPadding, minLng - lngPadding),
+      LatLng(maxLat + latPadding, maxLng + lngPadding),
+    );
+
+    // Fit map to bounds
+    try {
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(50),
+        ),
+      );
+    } catch (e) {
+      // Ignore if map controller not ready
+    }
+  }
+
   Widget _buildMap(mapState) {
     final destinationLatLng = LatLng(
       widget.destination.latitude,
@@ -65,8 +141,16 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
 
     // Center map on current position or destination
     final center = mapState.currentPosition ?? destinationLatLng;
+    
+    // Create unique key that changes when route becomes available
+    final mapWidgetKey = '${_mapKey}_${mapState.currentRoute != null ? 'route' : 'noroute'}';
+    final routePoints = mapState.currentRoute?.coordinates.length ?? 0;
+    final lastRec = mapState.lastRecalculation?.millisecondsSinceEpoch ?? 0;
+    // Create a key that also includes lastRecalculation so map rebuilds on route updates
+    final mapWidgetKeyWithRec = '${mapWidgetKey}_$lastRec';
 
     return FlutterMap(
+      key: ValueKey(mapWidgetKeyWithRec), // Force rebuild when route loads/updates
       mapController: _mapController,
       options: MapOptions(
         initialCenter: center,
@@ -79,8 +163,8 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
           urlTemplate: AppConstants.osmTileUrl,
           userAgentPackageName: 'com.example.location_tracker',
         ),
-        // Route polyline
-        if (mapState.currentRoute != null)
+        // Route polyline (only draw if route has more than one point)
+        if (routePoints > 1)
           PolylineLayer(
             polylines: [
               Polyline(

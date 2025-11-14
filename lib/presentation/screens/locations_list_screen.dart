@@ -244,9 +244,13 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
   }
 
   void _navigateToMap(BuildContext context, location) {
+    // Navigate with unique key - provider will be fresh due to family caching
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => MapNavigationScreen(destination: location),
+        builder: (context) => MapNavigationScreen(
+          key: ValueKey('map_${location.id ?? 'new'}_${location.latitude}_${location.longitude}_${DateTime.now().millisecondsSinceEpoch}'),
+          destination: location,
+        ),
       ),
     );
   }
