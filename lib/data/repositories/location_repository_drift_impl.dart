@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:latlong2/latlong.dart';
 import '../../domain/entities/saved_location.dart';
 import '../../domain/entities/route_info.dart';
+import '../../domain/entities/category.dart';
 import '../../domain/repositories/location_repository.dart';
 import '../../core/errors/failures.dart';
 import '../datasources/location_drift_datasource.dart';
@@ -24,16 +25,37 @@ class LocationRepositoryDriftImpl implements LocationRepository {
   Future<Either<Failure, List<SavedLocation>>> getSavedLocations() async {
     try {
       final driftLocations = await localDataSource.getAllLocations();
+      final categories = await localDataSource.getCategories();
+      
+      // Mappa categories per ID per lookup veloce
+      final categoryMap = {for (var cat in categories) cat.id: cat};
       
       // Converti da Drift SavedLocation a domain SavedLocation
-      final domainLocations = driftLocations.map((driftLoc) => SavedLocation(
-        id: driftLoc.id,
-        label: driftLoc.label,
-        latitude: driftLoc.latitude,
-        longitude: driftLoc.longitude,
-        createdAt: driftLoc.createdAt,
-        isPinned: driftLoc.isPinned,
-      )).toList();
+      final domainLocations = driftLocations.map((driftLoc) {
+        Category? category;
+        if (driftLoc.categoryId != null) {
+          final driftCat = categoryMap[driftLoc.categoryId];
+          if (driftCat != null) {
+            category = Category(
+              id: driftCat.id,
+              name: driftCat.name,
+              icon: driftCat.icon,
+              colorHex: driftCat.color,
+            );
+          }
+        }
+        
+        return SavedLocation(
+          id: driftLoc.id,
+          label: driftLoc.label,
+          latitude: driftLoc.latitude,
+          longitude: driftLoc.longitude,
+          createdAt: driftLoc.createdAt,
+          isPinned: driftLoc.isPinned,
+          photoPath: driftLoc.photoPath,
+          category: category,
+        );
+      }).toList();
       
       return Right(domainLocations);
     } catch (e) {
@@ -200,6 +222,48 @@ class LocationRepositoryDriftImpl implements LocationRepository {
       }
     } catch (e) {
       yield Left(LocationServiceFailure('Failed to get position stream: ${e.toString()}'));
+    }
+  }
+
+  // ============================================================
+  // NEW FEATURES: Photo & Categories
+  // ============================================================
+  
+  @override
+  Future<Either<Failure, void>> updateLocationPhoto(int locationId, String? photoPath) async {
+    try {
+      await localDataSource.updateLocationPhoto(locationId, photoPath);
+      return const Right(null);
+    } catch (e) {
+      return Left(DatabaseFailure('Failed to update location photo: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> assignCategoryToLocation(int locationId, int? categoryId) async {
+    try {
+      await localDataSource.assignCategoryToLocation(locationId, categoryId);
+      return const Right(null);
+    } catch (e) {
+      return Left(DatabaseFailure('Failed to assign category: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Category>>> getCategories() async {
+    try {
+      final driftCategories = await localDataSource.getCategories();
+      
+      final domainCategories = driftCategories.map((driftCat) => Category(
+        id: driftCat.id,
+        name: driftCat.name,
+        icon: driftCat.icon,
+        colorHex: driftCat.color,
+      )).toList();
+      
+      return Right(domainCategories);
+    } catch (e) {
+      return Left(DatabaseFailure('Failed to get categories: ${e.toString()}'));
     }
   }
 }

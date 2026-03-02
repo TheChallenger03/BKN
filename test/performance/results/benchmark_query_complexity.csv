@@ -1,6 +1,6 @@
 Query Type,Complexity,Execution Time (ms),Tuple Count
-Simple SELECT,O(n log n),78,10000
-SELECT with WHERE,O(n),7,10000
+Simple SELECT,O(n log n),82,10000
+SELECT with WHERE,O(n),8,10000
 Aggregation (COUNT),O(n),1,10000
-Geospatial (Haversine),O(n),14,10000
+Geospatial (Haversine),O(n),19,10000
 Transaction (2 UPDATEs),O(1),7,2

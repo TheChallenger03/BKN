@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 import '../providers/location_provider.dart';
+import '../providers/category_provider.dart';
 import '../providers/deep_link_provider.dart';
 import '../widgets/location_list_item.dart';
-import '../widgets/save_location_dialog.dart';
-import '../widgets/edit_label_dialog.dart';
-import '../widgets/delete_confirmation_dialog.dart';
-import '../widgets/import_location_dialog.dart';
+import '../widgets/location_search_bar.dart';
 import '../widgets/glowing_fab.dart';
+import '../widgets/configure_home_widget_dialog.dart';
 import '../../core/themes/app_theme.dart';
-import '../../core/utils/link_utils.dart';
 import '../../domain/entities/saved_location.dart';
-import 'map_navigation_screen.dart';
+import '../controllers/location_screen_controller.dart';
 
 class LocationsListScreen extends ConsumerStatefulWidget {
   const LocationsListScreen({super.key});
@@ -22,40 +19,30 @@ class LocationsListScreen extends ConsumerStatefulWidget {
 }
 
 class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
+  /// Crea un controller quando necessario (lazy creation)
+  LocationScreenController _createController() => 
+    LocationScreenController(ref: ref, context: context);
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingLocation());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingLocation();
+    });
   }
 
   void _checkPendingLocation() {
-    final pendingLocation = ref.read(pendingLocationProvider);
-    if (pendingLocation != null) {
-      _showImportDialog(pendingLocation);
-    }
-  }
-
-  Future<void> _showImportDialog(LocationLinkData locationData) async {
-    final shouldSave = await showDialog<bool>(
-      context: context,
-      builder: (context) => ImportLocationDialog(locationData: locationData),
-    );
-
-    if (shouldSave == true && mounted) {
-      final notifier = ref.read(locationsProvider.notifier);
-      await notifier.saveLocation(locationData.toSavedLocation().label);
-    }
-
-    ref.read(deepLinkProvider.notifier).clearLink();
+    _createController().checkPendingDeepLink();
   }
 
   @override
   Widget build(BuildContext context) {
-    final locationsAsync = ref.watch(locationsProvider);
+    // Usa filteredLocationsProvider invece di locationsProvider
+    final locationsAsync = ref.watch(filteredLocationsProvider);
 
     ref.listen(pendingLocationProvider, (previous, next) {
       if (next != null && previous != next) {
-        _showImportDialog(next);
+        _createController().showImportDialog(next);
       }
     });
 
@@ -63,14 +50,35 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
       appBar: AppBar(
         title: const Text('BKN'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.widgets),
+            tooltip: 'Configura Widget',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const ConfigureHomeWidgetDialog(),
+              );
+            },
+          ),
+        ],
       ),
-      body: locationsAsync.when(
-        data: _buildLocationsList,
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: _buildErrorState,
+      body: Column(
+        children: [
+          // Aggiungi search bar con filtri
+          const LocationSearchBar(),
+          // Lista locations filtrate
+          Expanded(
+            child: locationsAsync.when(
+              data: (locations) => _buildLocationsList(locations),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: _buildErrorState,
+            ),
+          ),
+        ],
       ),
       floatingActionButton: GlowingFab(
-        onPressed: () => _saveNewLocation(context, ref),
+        onPressed: () => _createController().saveNewLocation(),
         icon: Icons.add_location,
       ),
     );
@@ -98,16 +106,16 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
       );
     }
 
-    final locationIndex = (dividerIndex != null && index > dividerIndex) ? index - 1 : index;
+    final locationIndex = (dividerIndex != null && index > dividerIndex) ? index - 1 : index;  
     final location = locations[locationIndex];
 
     return LocationListItem(
       location: location,
-      onTap: () => _navigateToMap(location),
-      onTogglePin: () => _togglePin(ref, location.id!),
-      onEdit: () => _editLabel(location),
-      onDelete: () => _deleteLocation(location),
-      onShare: () => _shareLocation(location),
+      onTap: () => _createController().navigateToMap(location),
+      onTogglePin: () => _createController().togglePin(location.id!),
+      onEdit: () => _createController().editLocationLabel(location),
+      onDelete: () => _createController().deleteLocation(location),
+      onShare: () => _createController().shareLocation(location),
     );
   }
 
@@ -178,92 +186,6 @@ class _LocationsListScreenState extends ConsumerState<LocationsListScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Future<void> _saveNewLocation(BuildContext context, WidgetRef ref) async {
-    final label = await showDialog<String>(
-      context: context,
-      builder: (context) => const SaveLocationDialog(),
-    );
-
-    if (label != null && context.mounted) {
-      // Mostra dialog di caricamento
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => PopScope(
-          canPop: false,
-          child: Dialog(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryTeal),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Salvataggio posizione...'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-
-      final notifier = ref.read(locationsProvider.notifier);
-      await notifier.saveLocation(label);
-
-      // Chiudi il dialog di caricamento
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
-    }
-  }
-
-  Future<void> _editLabel(SavedLocation location) async {
-    final newLabel = await showDialog<String>(
-      context: context,
-      builder: (context) => EditLabelDialog(currentLabel: location.label),
-    );
-
-    if (newLabel != null && newLabel != location.label && context.mounted) {
-      await ref.read(locationsProvider.notifier).updateLabel(location.id!, newLabel);
-    }
-  }
-
-  Future<void> _deleteLocation(SavedLocation location) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => DeleteConfirmationDialog(locationLabel: location.label),
-    );
-
-    if (confirm == true && context.mounted) {
-      await ref.read(locationsProvider.notifier).removeLocation(location.id!);
-    }
-  }
-
-  Future<void> _togglePin(WidgetRef ref, int id) async {
-    await ref.read(locationsProvider.notifier).togglePin(id);
-  }
-
-  void _navigateToMap(SavedLocation location) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => MapNavigationScreen(
-          key: ValueKey('map_${location.id}_${DateTime.now().millisecondsSinceEpoch}'),
-          destination: location,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _shareLocation(SavedLocation location) async {
-    final message = LinkUtils.generateShareMessage(location);
-    await Share.share(
-      message,
-      subject: 'Posizione: ${location.label}',
     );
   }
 }

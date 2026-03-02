@@ -5,6 +5,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../domain/entities/saved_location.dart';
 import '../providers/map_provider.dart';
+import '../widgets/download_tiles_dialog.dart';
+import '../widgets/offline_map_storage_widget.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/link_utils.dart';
 import '../../core/themes/app_theme.dart';
@@ -57,6 +59,16 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
       appBar: AppBar(
         title: Text(widget.destination.label),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Scarica mappe offline',
+            onPressed: _showDownloadDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.storage),
+            tooltip: 'Gestisci storage',
+            onPressed: _showStorageDialog,
+          ),
           IconButton(
             icon: const Icon(Icons.share),
             tooltip: 'Condividi posizione',
@@ -142,7 +154,7 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
           userAgentPackageName: 'com.example.location_tracker',
           maxNativeZoom: 19,
           maxZoom: 19,
-          tileProvider: NetworkTileProvider(),
+          tileProvider: _getCachedTileProvider(),
           errorTileCallback: (tile, error, stackTrace) {},
         ),
         if (routePoints > 1)
@@ -198,6 +210,9 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
   }
 
   Widget _buildLoadingOverlay() {
+    final mapState = ref.watch(_mapProvider);
+    final hasPosition = mapState.currentPosition != null;
+    
     return Container(
       color: Colors.black.withValues(alpha: 0.5),
       child: Center(
@@ -220,7 +235,7 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Calcolo percorso...',
+                hasPosition ? 'Calcolo percorso...' : 'Ottenendo posizione GPS...',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 14,
@@ -322,6 +337,37 @@ class _MapNavigationScreenState extends ConsumerState<MapNavigationScreen> {
     await Share.share(
       message,
       subject: 'Posizione: ${widget.destination.label}',
+    );
+  }
+
+  /// Ottiene il tile provider con caching offline
+  dynamic _getCachedTileProvider() {
+    try {
+      final service = ref.read(offlineTileServiceProvider);
+      return service.getTileProvider();
+    } catch (e) {
+      // Fallback to network provider se il caching non è disponibile
+      return NetworkTileProvider();
+    }
+  }
+
+  /// Mostra il dialog per scaricare i tile offline
+  Future<void> _showDownloadDialog() async {
+    final mapState = ref.read(_mapProvider);
+    final center = mapState.currentPosition ?? _destinationLatLng;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => DownloadTilesDialog(center: center),
+    );
+  }
+
+  /// Mostra il dialog per gestire lo storage offline
+  Future<void> _showStorageDialog() async {
+    await showDialog(
+      context: context,
+      builder: (context) => const OfflineMapStorageWidget(),
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/saved_location.dart';
 
 class LinkUtils {
@@ -54,8 +55,8 @@ class LinkUtils {
     return '📍 Ti condivido questa posizione: "${location.label}"\n\n'
         'Coordinate: ${location.latitude.toStringAsFixed(6)}, '
         '${location.longitude.toStringAsFixed(6)}\n\n'
-        'Apri con Location Tracker:\n$link\n\n'
-        'O visualizza su Google Maps:\n'
+        '🚀 Hai BKN? Apri direttamente:\n$link\n\n'
+        '📱 Non hai BKN? Visualizza su Google Maps:\n'
         '${generateGoogleMapsLink(location)}';
   }
 
@@ -63,6 +64,31 @@ class LinkUtils {
   static String generateGoogleMapsLink(SavedLocation location) {
     return 'https://www.google.com/maps/search/?api=1&query='
         '${location.latitude},${location.longitude}';
+  }
+
+  /// Opens location in BKN app if installed, otherwise fallback to Google Maps.
+  /// Returns true if successfully opened, false otherwise.
+  static Future<bool> openLocationWithFallback(SavedLocation location) async {
+    final deepLink = generateLocationLink(location);
+    final googleMapsLink = generateGoogleMapsLink(location);
+
+    try {
+      // Try to open BKN app deep link
+      final bknUri = Uri.parse(deepLink);
+      if (await canLaunchUrl(bknUri)) {
+        return await launchUrl(bknUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      // Deep link failed, continue to fallback
+    }
+
+    // Fallback: Open Google Maps
+    try {
+      final mapsUri = Uri.parse(googleMapsLink);
+      return await launchUrl(mapsUri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      return false;
+    }
   }
 }
 

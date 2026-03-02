@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'category.dart';
 
 class SavedLocation extends Equatable {
   final int? id;
@@ -7,6 +8,8 @@ class SavedLocation extends Equatable {
   final double longitude;
   final DateTime createdAt;
   final bool isPinned;
+  final String? photoPath;
+  final Category? category;
 
   const SavedLocation({
     this.id,
@@ -15,6 +18,8 @@ class SavedLocation extends Equatable {
     required this.longitude,
     required this.createdAt,
     this.isPinned = false,
+    this.photoPath,
+    this.category,
   });
 
   SavedLocation copyWith({
@@ -24,6 +29,8 @@ class SavedLocation extends Equatable {
     double? longitude,
     DateTime? createdAt,
     bool? isPinned,
+    String? photoPath,
+    Category? category,
   }) {
     return SavedLocation(
       id: id ?? this.id,
@@ -32,6 +39,8 @@ class SavedLocation extends Equatable {
       longitude: longitude ?? this.longitude,
       createdAt: createdAt ?? this.createdAt,
       isPinned: isPinned ?? this.isPinned,
+      photoPath: photoPath ?? this.photoPath,
+      category: category ?? this.category,
     );
   }
 
@@ -42,5 +51,8 @@ class SavedLocation extends Equatable {
     latitude, 
     longitude, 
     createdAt, 
-    isPinned];
+    isPinned,
+    photoPath,
+    category,
+  ];
 }

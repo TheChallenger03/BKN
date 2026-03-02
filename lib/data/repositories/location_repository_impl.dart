@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:latlong2/latlong.dart';
 import '../../domain/entities/saved_location.dart';
 import '../../domain/entities/route_info.dart';
+import '../../domain/entities/category.dart';
 import '../../domain/repositories/location_repository.dart';
 import '../../core/errors/failures.dart';
 import '../datasources/location_local_datasource.dart';
@@ -9,6 +10,9 @@ import '../datasources/geolocation_datasource.dart';
 import '../datasources/routing_datasource.dart';
 import '../models/saved_location_model.dart';
 
+/// NOTE: This repository implementation is deprecated.
+/// Use LocationRepositoryDriftImpl instead.
+@Deprecated('Use LocationRepositoryDriftImpl')
 class LocationRepositoryImpl implements LocationRepository {
   final LocationLocalDataSource localDataSource;
   final GeolocationDataSource geolocationDataSource;
@@ -127,5 +131,24 @@ class LocationRepositoryImpl implements LocationRepository {
     catch (e) {
       yield Left(LocationServiceFailure('Failed to get position stream: ${e.toString()}'));
     }
+  }
+  
+  // ============================================================
+  // NEW FEATURES: Stub implementations (not used, deprecated)
+  // ============================================================
+  
+  @override
+  Future<Either<Failure, void>> updateLocationPhoto(int locationId, String? photoPath) async {
+    return Left(DatabaseFailure('Not implemented in deprecated repository'));
+  }
+
+  @override
+  Future<Either<Failure, void>> assignCategoryToLocation(int locationId, int? categoryId) async {
+    return Left(DatabaseFailure('Not implemented in deprecated repository'));
+  }
+
+  @override
+  Future<Either<Failure, List<Category>>> getCategories() async {
+    return Left(DatabaseFailure('Not implemented in deprecated repository'));
   }
 }

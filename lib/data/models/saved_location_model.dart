@@ -8,6 +8,8 @@ class SavedLocationModel extends SavedLocation {
     required super.longitude,
     required super.createdAt,
     super.isPinned,
+    super.photoPath,
+    super.category,
   });
 
   // Convert from entity to model
@@ -19,6 +21,8 @@ class SavedLocationModel extends SavedLocation {
       longitude: entity.longitude,
       createdAt: entity.createdAt,
       isPinned: entity.isPinned,
+      photoPath: entity.photoPath,
+      category: entity.category,
     );
   }
 
@@ -31,6 +35,8 @@ class SavedLocationModel extends SavedLocation {
       longitude: map['longitude'] as double,
       createdAt: DateTime.fromMicrosecondsSinceEpoch(map['createdAt'] as int),
       isPinned: (map['isPinned'] as int) == 1,
+      photoPath: map['photoPath'] as String?,
+      // category: category loading would need join, handle separately
     );
   }
 
@@ -43,6 +49,8 @@ class SavedLocationModel extends SavedLocation {
       'longitude': longitude,
       'createdAt': createdAt.microsecondsSinceEpoch,
       'isPinned': isPinned ? 1 : 0,
+      'photoPath': photoPath,
+      // 'categoryId': category?.id, // Handle separately
     };
   }
 
@@ -55,6 +63,8 @@ class SavedLocationModel extends SavedLocation {
       longitude: longitude,
       createdAt: createdAt,
       isPinned: isPinned,
+      photoPath: photoPath,
+      category: category,
     );
   }
 
@@ -67,6 +77,8 @@ class SavedLocationModel extends SavedLocation {
     double? longitude,
     DateTime? createdAt,
     bool? isPinned,
+    String? photoPath,
+    category, // Dynamic to handle null properly
   }) {
     return SavedLocationModel(
       id: id ?? this.id,
@@ -75,6 +87,8 @@ class SavedLocationModel extends SavedLocation {
       longitude: longitude ?? this.longitude,
       createdAt: createdAt ?? this.createdAt,
       isPinned: isPinned ?? this.isPinned,
+      photoPath: photoPath ?? this.photoPath,
+      category: category ?? this.category,
     );
   }
 }
