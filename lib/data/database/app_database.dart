@@ -11,7 +11,7 @@ part 'app_database.g.dart';
 /// 
 /// Questa classe gestisce la configurazione del database Drift,
 /// le migrazioni dello schema e fornisce accesso ai DAOs.
-@DriftDatabase(tables: [SavedLocations])
+@DriftDatabase(tables: [SavedLocations, Categories])
 class AppDatabase extends _$AppDatabase {
   /// Istanza singleton del database (opzionale)
   static AppDatabase? _instance;
@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
   
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => _migrationStrategy;
@@ -48,14 +48,65 @@ class AppDatabase extends _$AppDatabase {
   /// Chiamato alla creazione del database
   Future<void> _onCreate(Migrator m) async {
     await m.createAll();
+    
+    // Crea categorie predefinite
+    await _insertDefaultCategories();
   }
   
   /// Chiamato durante l'aggiornamento dello schema
   Future<void> _onUpgrade(Migrator m, int from, int to) async {
-    // Esempio di migrazione per future versioni:
-    // if (from < 2) {
-    //   await m.addColumn(savedLocations, savedLocations.newColumn);
-    // }
+    if (from < 2) {
+      // Migration v1 -> v2: Aggiungi foto e categorie
+      await m.createTable(categories);
+      await m.addColumn(savedLocations, savedLocations.photoPath);
+      await m.addColumn(savedLocations, savedLocations.categoryId);
+      
+      // Inserisci categorie predefinite
+      await _insertDefaultCategories();
+    }
+  }
+  
+  /// Inserisce le categorie predefinite nel database
+  Future<void> _insertDefaultCategories() async {
+    final defaultCategories = [
+      CategoriesCompanion.insert(
+        name: 'Casa',
+        icon: const Value('🏠'),
+        color: const Value('#4CAF50'),
+      ),
+      CategoriesCompanion.insert(
+        name: 'Lavoro',
+        icon: const Value('💼'),
+        color: const Value('#2196F3'),
+      ),
+      CategoriesCompanion.insert(
+        name: 'Ristoranti',
+        icon: const Value('🍴'),
+        color: const Value('#FF9800'),
+      ),
+      CategoriesCompanion.insert(
+        name: 'Viaggi',
+        icon: const Value('✈️'),
+        color: const Value('#9C27B0'),
+      ),
+      CategoriesCompanion.insert(
+        name: 'Sport',
+        icon: const Value('⚽'),
+        color: const Value('#F44336'),
+      ),
+      CategoriesCompanion.insert(
+        name: 'Altro',
+        icon: const Value('📍'),
+        color: const Value('#607D8B'),
+      ),
+    ];
+    
+    for (final category in defaultCategories) {
+      await into(categories).insert(
+        category,
+        mode: InsertMode.insertOrIgnore,
+      );
+    }
   }
   
   // ============================================================

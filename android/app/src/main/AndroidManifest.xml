@@ -36,6 +36,19 @@
                     android:host="bkn.lorenzobkn.com"/>
             </intent-filter>
         </activity>
+        
+        <!-- Widget receiver for home screen location widget -->
+        <receiver 
+            android:name=".BKNLocationWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/bkn_location_widget_info" />
+        </receiver>
+        
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

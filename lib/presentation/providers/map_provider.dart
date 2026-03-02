@@ -4,8 +4,9 @@ import 'package:latlong2/latlong.dart';
 import '../../domain/entities/route_info.dart';
 import '../../domain/entities/saved_location.dart';
 import '../../domain/usecases/get_route.dart';
-import '../../core/constants/app_constants.dart';
 import 'location_provider.dart';
+import '../services/routing_service.dart';
+import '../services/position_tracker.dart';
 
 class MapState {
   final SavedLocation destination;
@@ -45,7 +46,9 @@ class MapState {
 class MapNotifier extends StateNotifier<MapState> {
   final GetRoute getRoute;
   final SavedLocation destination;
-  StreamSubscription<LatLng>? _positionSubscription;
+  final RoutingService _routingService;
+  final PositionTracker _positionTracker;
+  
   Timer? _initialRouteTimer;
   bool _hasCalculatedInitialRoute = false;
   bool _isCalculatingRoute = false;
@@ -57,9 +60,14 @@ class MapNotifier extends StateNotifier<MapState> {
     required this.destination,
     required Stream<LatLng> positionStream,
     required Future<LatLng?> Function() getLastPosition,
-  }) : super(MapState(destination: destination)) {
+  })  : _routingService = RoutingService(),
+        _positionTracker = PositionTracker(
+          positionStream: positionStream,
+          getLastPosition: getLastPosition,
+        ),
+        super(MapState(destination: destination, isLoading: true)) {
     _initializeRoute(getLastPosition);
-    _startListening(positionStream);
+    _startListening();
   }
 
   Future<void> _initializeRoute(Future<LatLng?> Function() getLastPosition) async {
@@ -68,8 +76,8 @@ class MapNotifier extends StateNotifier<MapState> {
   }
 
   void _startFallbackTimer(Future<LatLng?> Function() getLastPosition) {
-    _initialRouteTimer = Timer(const Duration(seconds: 3), () async {
-      if (state.currentRoute == null && !state.isLoading) {
+    _initialRouteTimer = Timer(const Duration(milliseconds: 1500), () async {
+      if (state.currentRoute == null) {
         _hasCalculatedInitialRoute = true;
         final position = await getLastPosition();
         if (position != null) {
@@ -87,10 +95,13 @@ class MapNotifier extends StateNotifier<MapState> {
   Future<void> _tryInitialCalculation(Future<LatLng?> Function() getLastPosition) async {
     try {
       final lastPosition = await getLastPosition();
-      if (lastPosition == null) return;
+      if (lastPosition == null) {
+        // Nessuna posizione cache, attendi stream o fallback timer
+        return;
+      }
 
       _hasCalculatedInitialRoute = true;
-      state = state.copyWith(isLoading: true, errorMessage: null);
+      // isLoading è già true dallo state iniziale
 
       final result = await getRoute(from: lastPosition, to: _destinationLatLng);
 
@@ -114,13 +125,12 @@ class MapNotifier extends StateNotifier<MapState> {
     }
   }
 
-  void _startListening(Stream<LatLng> positionStream) {
-    Future.microtask(() {
-      _positionSubscription = positionStream.listen(
-        _updatePosition,
-        onError: (error) => state = state.copyWith(errorMessage: error.toString()),
-      );
-    });
+  void _startListening() {
+    _positionTracker.onPositionUpdate = _updatePosition;
+    _positionTracker.onError = (error) => 
+      state = state.copyWith(errorMessage: error.toString());
+    
+    Future.microtask(() => _positionTracker.startListening());
   }
 
   Future<void> _updatePosition(LatLng position) async {
@@ -142,46 +152,31 @@ class MapNotifier extends StateNotifier<MapState> {
 
   void _trimRouteToPosition(LatLng currentPosition) {
     final route = state.currentRoute!;
-    if (route.coordinates.length <= 2) return;
-
-    final closestIndex = _findClosestPointIndex(currentPosition, route.coordinates);
     
-    if (closestIndex.distance < 15.0 && closestIndex.index > 0) {
-      final trimmedCoordinates = route.coordinates.sublist(closestIndex.index);
-      if (trimmedCoordinates.length >= 2) {
-        state = state.copyWith(
-          currentRoute: RouteInfo(
-            coordinates: trimmedCoordinates,
-            distance: route.distance,
-            duration: route.duration,
-          ),
-        );
-      }
+    final trimmedRoute = _routingService.trimRouteToPosition(
+      currentPosition: currentPosition,
+      route: route,
+    );
+
+    if (trimmedRoute != null) {
+      state = state.copyWith(currentRoute: trimmedRoute);
     }
-  }
-
-  ({int index, double distance}) _findClosestPointIndex(LatLng position, List<LatLng> points) {
-    final distance = Distance();
-    int closestIndex = 0;
-    double minDistance = double.infinity;
-
-    for (int i = 0; i < points.length; i++) {
-      final dist = distance.as(LengthUnit.Meter, position, points[i]);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestIndex = i;
-      }
-    }
-
-    return (index: closestIndex, distance: minDistance);
   }
 
   bool _shouldRecalculateRoute(LatLng newPosition) {
     if (state.currentRoute == null) return true;
     if (state.isLoading) return false;
 
-    final minDistance = _findClosestPointIndex(newPosition, state.currentRoute!.coordinates).distance;
-    return minDistance > AppConstants.routeRecalculationThresholdMeters;
+    // Debouncing: evita ricalcoli più frequenti di ogni 5 secondi
+    if (state.lastRecalculation != null) {
+      final secondsSinceLastRecalc = DateTime.now().difference(state.lastRecalculation!).inSeconds;
+      if (secondsSinceLastRecalc < 5) return false;
+    }
+
+    return _routingService.shouldRecalculateRoute(
+      currentPosition: newPosition,
+      currentRoute: state.currentRoute!,
+    );
   }
 
   Future<void> _calculateRoute(LatLng from) async {
@@ -214,19 +209,15 @@ class MapNotifier extends StateNotifier<MapState> {
 
   RouteInfo _createSyntheticRoute(LatLng from) {
     final start = state.currentPosition ?? from;
-    final distance = Distance();
-    final dist = distance.as(LengthUnit.Meter, start, _destinationLatLng);
-    
-    return RouteInfo(
-      coordinates: [start, _destinationLatLng],
-      distance: dist,
-      duration: dist / 1.4,
+    return _routingService.createFallbackRoute(
+      from: start,
+      to: _destinationLatLng,
     );
   }
 
   @override
   void dispose() {
-    _positionSubscription?.cancel();
+    _positionTracker.dispose();
     _initialRouteTimer?.cancel();
     super.dispose();
   }

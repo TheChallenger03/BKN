@@ -18,6 +18,11 @@ abstract class LocationLocalDataSource {
     required double radiusKm,
   });
   Stream<List<SavedLocation>> watchLocations();
+  
+  // New features
+  Future<void> updateLocationPhoto(int locationId, String? photoPath);
+  Future<void> assignCategoryToLocation(int locationId, int? categoryId);
+  Future<List<Category>> getCategories();
 }
 
 class LocationDriftDataSource implements LocationLocalDataSource {
@@ -117,5 +122,33 @@ class LocationDriftDataSource implements LocationLocalDataSource {
   @override
   Stream<List<SavedLocation>> watchLocations() {
     return _db.watchAllLocations();
+  }
+  
+  // ============================================================
+  // NEW FEATURES: Photo & Categories
+  // ============================================================
+  
+  @override
+  Future<void> updateLocationPhoto(int locationId, String? photoPath) async {
+    await (_db.update(_db.savedLocations)
+          ..where((tbl) => tbl.id.equals(locationId)))
+        .write(SavedLocationsCompanion(
+      photoPath: drift.Value(photoPath),
+    ));
+  }
+  
+  @override
+  Future<void> assignCategoryToLocation(int locationId, int? categoryId) async {
+    await (_db.update(_db.savedLocations)
+          ..where((tbl) => tbl.id.equals(locationId)))
+        .write(SavedLocationsCompanion(
+      categoryId: drift.Value(categoryId),
+    ));
+  }
+  
+  @override
+  Future<List<Category>> getCategories() async {
+    final query = _db.select(_db.categories);
+    return await query.get();
   }
 }

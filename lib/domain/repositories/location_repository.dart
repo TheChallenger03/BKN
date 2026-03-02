@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:latlong2/latlong.dart';
 import '../entities/route_info.dart';
 import '../entities/saved_location.dart';
+import '../entities/category.dart';
 import '../../core/errors/failures.dart';
 
 abstract class LocationRepository {
@@ -33,6 +34,20 @@ abstract class LocationRepository {
   });
 
   /// Stream of current positions update
-  Stream<Either<Failure, LatLng>> getCurrentPositionStream();  
+  Stream<Either<Failure, LatLng>> getCurrentPositionStream();
+  
+  // ============================================================
+  // NEW FEATURES: Photo & Categories
+  // ============================================================
+  
+  /// Update the photo path of a location
+  Future<Either<Failure, void>> updateLocationPhoto(int locationId, String? photoPath);
+  
+  /// Assign a category to a location
+  Future<Either<Failure, void>> assignCategoryToLocation(int locationId, int? categoryId);
+  
+  /// Get all available categories
+  Future<Either<Failure, List<Category>>> getCategories();
 }
+
 

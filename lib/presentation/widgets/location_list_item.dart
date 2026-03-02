@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../domain/entities/saved_location.dart';
 import '../../core/themes/app_theme.dart';
@@ -64,7 +65,7 @@ class _LocationListItemState extends State<LocationListItem>
           children: [
             Row(
               children: [
-                // Icon with gradient background
+                // Photo or Icon with gradient background
                 Container(
                   width: 48,
                   height: 48,
@@ -78,14 +79,22 @@ class _LocationListItemState extends State<LocationListItem>
                             ],
                           ),
                     borderRadius: BorderRadius.circular(12),
+                    image: widget.location.photoPath != null
+                        ? DecorationImage(
+                            image: FileImage(File(widget.location.photoPath!)),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: Icon(
-                    Icons.location_on,
-                    color: widget.location.isPinned
-                        ? Colors.black
-                        : AppTheme.primaryTeal,
-                    size: 28,
-                  ),
+                  child: widget.location.photoPath == null
+                      ? Icon(
+                          Icons.location_on,
+                          color: widget.location.isPinned
+                              ? Colors.black
+                              : AppTheme.primaryTeal,
+                          size: 28,
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 // Label
@@ -129,6 +138,44 @@ class _LocationListItemState extends State<LocationListItem>
                           color: Colors.white.withValues(alpha: 0.5),
                         ),
                       ),
+                      // Category badge
+                      if (widget.location.category != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: widget.location.category!.color
+                                .withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: widget.location.category!.color
+                                  .withValues(alpha: 0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.location.category!.icon,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                widget.location.category!.name,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: widget.location.category!.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

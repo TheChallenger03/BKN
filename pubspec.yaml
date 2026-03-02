@@ -47,6 +47,13 @@ dependencies:
   share_plus: ^7.2.1
   app_links: ^3.5.0
   cupertino_icons: ^1.0.8
+  # New features dependencies
+  image_picker: ^1.0.7
+  url_launcher: ^6.2.5
+  cached_network_image: ^3.3.1
+  flutter_cache_manager: ^3.3.1
+  flutter_map_tile_caching: ^9.0.1
+  home_widget: ^0.9.0
 
 dev_dependencies:
   flutter_test:
