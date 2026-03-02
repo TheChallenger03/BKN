@@ -1,4 +1,4 @@
-name: BKN
+name: bkn
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -31,11 +31,14 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.4.0
+  drift: ^2.20.3
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.5
   dartz: ^0.10.1
   equatable: ^2.0.5
   sqflite: ^2.3.0
   sqflite_common_ffi: ^2.3.0
-  path: ^1.8.3
+  path: ^1.9.1
   geolocator: ^14.0.2
   permission_handler: ^11.0.1
   flutter_map: ^6.0.0
@@ -49,6 +52,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
+  drift_dev: ^2.20.3
+  build_runner: ^2.4.13
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

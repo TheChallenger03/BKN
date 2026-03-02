@@ -234,7 +234,7 @@ class MapNotifier extends StateNotifier<MapState> {
 
 // Position Stream Provider
 final positionStreamProvider = StreamProvider<LatLng>((ref) {
-  final repository = ref.read(localRepositoryProvider);
+  final repository = ref.read(locationRepositoryProvider);
 
   return repository.getCurrentPositionStream().asyncMap((either) {
     return either.fold(
@@ -255,7 +255,7 @@ final mapProvider = StateNotifierProvider.family<MapNotifier, MapState, String>(
 // Helper function to create provider with unique key
 StateNotifierProvider<MapNotifier, MapState> createMapProvider(SavedLocation destination) {
   return StateNotifierProvider<MapNotifier, MapState>((ref) {
-    final repository = ref.read(localRepositoryProvider);
+    final repository = ref.read(locationRepositoryProvider);
     final getRouteUseCase = GetRoute(repository);
 
     // Create position stream

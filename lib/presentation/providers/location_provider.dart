@@ -6,39 +6,55 @@ import '../../domain/usecases/save_current_location.dart';
 import '../../domain/usecases/delete_location.dart';
 import '../../domain/usecases/update_location_label.dart';
 import '../../domain/usecases/toggle_location_pin.dart';
-import '../../data/repositories/location_repository_impl.dart';
-import '../../data/datasources/location_local_datasource.dart';
+import '../../data/repositories/location_repository_drift_impl.dart';
+import '../../data/datasources/location_drift_datasource.dart';
 import '../../data/datasources/geolocation_datasource.dart';
 import '../../data/datasources/routing_datasource.dart';
+import '../../data/database/app_database.dart' hide SavedLocation;
 
-final localRepositoryProvider = Provider<LocationRepository> ((ref) {
-  return LocationRepositoryImpl(
-    localDataSource: LocationLocalDataSourceImpl(),
-    geolocationDataSource: GeolocationDataSourceImpl(),
-    routingDataSource: RoutingDataSourceImpl(),
-    );
+// Provider del database Drift (singleton)
+final driftDatabaseProvider = Provider<AppDatabase>((ref) {
+  return AppDatabase();
 });
 
+// Provider del DataSource
+final locationDriftDataSourceProvider = Provider<LocationLocalDataSource>((ref) {
+  final database = ref.watch(driftDatabaseProvider);
+  return LocationDriftDataSource(database);
+});
+
+// Provider del Repository con Drift
+final locationRepositoryProvider = Provider<LocationRepository>((ref) {
+  return LocationRepositoryDriftImpl(
+    localDataSource: ref.read(locationDriftDataSourceProvider),
+    geolocationDataSource: GeolocationDataSourceImpl(),
+    routingDataSource: RoutingDataSourceImpl(),
+  );
+});
+
+// ... resto dei provider rimane uguale
+
 final getSavedLocationsProvider = Provider((ref) {
-  return GetSavedLocations(ref.read(localRepositoryProvider));
+  return GetSavedLocations(ref.read(locationRepositoryProvider));
 });
 
 final saveCurrentLocationProvider = Provider((ref) {
-  return SaveCurrentLocation(ref.read(localRepositoryProvider));
+  return SaveCurrentLocation(ref.read(locationRepositoryProvider));
 });
 
 final deleteLocationProvider = Provider((ref) {
-  return DeleteLocation(ref.read(localRepositoryProvider));
+  return DeleteLocation(ref.read(locationRepositoryProvider));
 });
 
 final updateLocationLabelProvider = Provider((ref) {
-  return UpdateLocationLabel(ref.read(localRepositoryProvider));
+  return UpdateLocationLabel(ref.read(locationRepositoryProvider));
 });
 
 final toggleLocationPinProvider = Provider((ref) {
-  return ToggleLocationPin(ref.read(localRepositoryProvider));
+  return ToggleLocationPin(ref.read(locationRepositoryProvider));
 });
 
+// LocationNotifier rimane identico
 class LocationNotifier extends StateNotifier<AsyncValue<List<SavedLocation>>> {
   final GetSavedLocations getSavedLocations;
   final SaveCurrentLocation saveCurrentLocation;
@@ -63,7 +79,8 @@ class LocationNotifier extends StateNotifier<AsyncValue<List<SavedLocation>>> {
     result.fold(
       (failure) => state = AsyncValue.error(
         failure.message,
-        StackTrace.current,),
+        StackTrace.current,
+      ),
       (locations) => state = AsyncValue.data(locations),
     );
   }
@@ -74,7 +91,8 @@ class LocationNotifier extends StateNotifier<AsyncValue<List<SavedLocation>>> {
       (failure) {
         state = AsyncValue.error(
           failure.message,
-          StackTrace.current,);
+          StackTrace.current,
+        );
         return false;
       },
       (location) {
@@ -90,7 +108,8 @@ class LocationNotifier extends StateNotifier<AsyncValue<List<SavedLocation>>> {
       (failure) {
         state = AsyncValue.error(
           failure.message,
-          StackTrace.current,);
+          StackTrace.current,
+        );
         return false;
       },
       (_) {
@@ -107,7 +126,8 @@ class LocationNotifier extends StateNotifier<AsyncValue<List<SavedLocation>>> {
       (failure) {
         state = AsyncValue.error(
           failure.message,
-          StackTrace.current,);
+          StackTrace.current,
+        );
         return false;
       },
       (_) {
@@ -124,7 +144,8 @@ class LocationNotifier extends StateNotifier<AsyncValue<List<SavedLocation>>> {
       (failure) {
         state = AsyncValue.error(
           failure.message,
-          StackTrace.current,);
+          StackTrace.current,
+        );
         return false;
       },
       (_) {
